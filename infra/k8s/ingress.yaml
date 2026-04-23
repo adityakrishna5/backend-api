@@ -1,0 +1,52 @@
+# GKE Ingress — path-based routing to all three microservices.
+# Requires GKE Ingress controller (enabled by default on GKE).
+# TLS cert managed by Google-managed SSL cert or cert-manager.
+#
+# Apply:
+#   kubectl apply -f infra/k8s/ingress.yaml -n platform
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: store-ingress
+  namespace: platform
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "store-ingress-ip"
+    networking.gke.io/managed-certificates: "store-tls-cert"
+    kubernetes.io/ingress.allow-http: "false"
+spec:
+  rules:
+    - host: api.store.internal   # replace with your domain
+      http:
+        paths:
+          - path: /api/v1/products
+            pathType: Prefix
+            backend:
+              service:
+                name: api-read
+                port:
+                  number: 8080
+          - path: /api/v1/orders
+            pathType: Prefix
+            backend:
+              service:
+                name: api-write
+                port:
+                  number: 8080
+          - path: /api/v1/inventory
+            pathType: Prefix
+            backend:
+              service:
+                name: api-rw
+                port:
+                  number: 8080
+---
+# Google-managed TLS certificate
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: store-tls-cert
+  namespace: platform
+spec:
+  domains:
+    - api.store.internal   # replace with your domain

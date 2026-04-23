@@ -1,0 +1,15 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/store   # Cloud SQL Auth Proxy sidecar
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://keycloak.internal/realms/store-realm
+  jpa:
+    hibernate:
+      ddl-auto: validate

@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Inventory Management API (api-rw)",
+    "description": "Stock reservation — hot path (Redis) and standard path (DB lock) — OAuth 2.0 enabled",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      {
+        "key": "accessTokenUrl",
+        "value": "{{oauth_token_url}}",
+        "type": "string"
+      },
+      {
+        "key": "clientId",
+        "value": "{{oauth_client_id}}",
+        "type": "string"
+      },
+      {
+        "key": "clientSecret",
+        "value": "{{oauth_client_secret}}",
+        "type": "string"
+      },
+      {
+        "key": "scope",
+        "value": "read write",
+        "type": "string"
+      },
+      {
+        "key": "addTokenTo",
+        "value": "header",
+        "type": "string"
+      },
+      {
+        "key": "authUrl",
+        "value": "{{oauth_auth_url}}",
+        "type": "string"
+      },
+      {
+        "key": "grantType",
+        "value": "authorizationCode",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Reserve Stock — Hot Path (Redis DECR)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code success', function () { pm.response.to.have.status(200); });",
+              "pm.test('Stock reserved', function () { pm.expect(pm.response.json().data).to.have.property('reserved'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 5,\n  \"orderId\": \"ORD-12345\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/inventory/42/reserve-hot",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "inventory", "42", "reserve-hot"]
+        },
+        "description": "Atomically decrement Redis counter. ~100k ops/sec, no DB lock. Perfect for flash sales."
+      }
+    },
+    {
+      "name": "Reserve Stock — Standard Path (DB Lock)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code success', function () { pm.response.to.have.status(200); });",
+              "pm.test('DB updated', function () { pm.expect(pm.response.json().data).to.have.property('dbStock'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"quantity\": 3,\n  \"reason\": \"Admin adjustment\"\n}"
+        },
+        "url": {
+          "raw": "{{base_url}}/api/v1/inventory/42/reserve",
+          "host": ["{{base_url}}"],
+          "path": ["api", "v1", "inventory", "42", "reserve"]
+        },
+        "description": "Redisson distributed lock + SELECT FOR UPDATE. Fully consistent with DB. ~200 TPS/product."
+      }
+    }
+  ],
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8082", "type": "string", "description": "api-rw service"},
+    {"key": "oauth_auth_url", "value": "http://localhost:8180/realms/store-realm/protocol/openid-connect/auth", "type": "string"},
+    {"key": "oauth_token_url", "value": "http://localhost:8180/realms/store-realm/protocol/openid-connect/token", "type": "string"},
+    {"key": "oauth_client_id", "value": "store-api", "type": "string"},
+    {"key": "oauth_client_secret", "value": "store-api-secret", "type": "string"},
+    {"key": "keycloak_user", "value": "manager1", "type": "string"},
+    {"key": "keycloak_password", "value": "password", "type": "string"}
+  ]
+}

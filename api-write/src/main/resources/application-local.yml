@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/store
+    username: store
+    password: store
+  kafka:
+    bootstrap-servers: localhost:9092
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/store-realm
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+management:
+  newrelic:
+    metrics:
+      export:
+        enabled: ${NEW_RELIC_ENABLED:false}
+        api-key: ${NEW_RELIC_API_KEY:}
+        account-id: ${NEW_RELIC_ACCOUNT_ID:}
+        step: 30s
+
+logging:
+  level:
+    com.store: DEBUG
+    org.springframework.kafka: INFO

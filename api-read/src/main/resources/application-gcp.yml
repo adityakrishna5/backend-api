@@ -1,0 +1,21 @@
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: 6379
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/store   # Cloud SQL Auth Proxy sidecar
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://keycloak.internal/realms/store-realm
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+cache:
+  redis:
+    time-to-live: 600000   # 600s TTL for higher hit ratio on GCP

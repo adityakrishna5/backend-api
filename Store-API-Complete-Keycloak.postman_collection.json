@@ -1,0 +1,514 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "name": "Store APIs - Complete (Keycloak Integrated)",
+    "description": "All APIs with automated Keycloak OAuth token generation. Each service on different port (8081/8082/8083)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-generate Keycloak token if expired or missing",
+          "const keycloakUrl = pm.variables.get('keycloak_token_url');",
+          "const clientId = pm.variables.get('oauth_client_id');",
+          "const clientSecret = pm.variables.get('oauth_client_secret');",
+          "const tokenExpiry = parseInt(pm.variables.get('token_expiry') || '0');",
+          "const now = Math.floor(Date.now() / 1000);",
+          "",
+          "// If token expired or doesn't exist, request new one",
+          "if (!pm.variables.get('access_token') || now > tokenExpiry) {",
+          "  const authRequest = {",
+          "    url: keycloakUrl,",
+          "    method: 'POST',",
+          "    header: {",
+          "      'Content-Type': 'application/x-www-form-urlencoded'",
+          "    },",
+          "    body: {",
+          "      mode: 'urlencoded',",
+          "      urlencoded: [",
+          "        { key: 'client_id', value: clientId },",
+          "        { key: 'client_secret', value: clientSecret },",
+          "        { key: 'grant_type', value: 'password' },",
+          "        { key: 'username', value: pm.variables.get('oauth_username') || 'customer1' },",
+          "        { key: 'password', value: pm.variables.get('oauth_password') || 'password' }",
+          "      ]",
+          "    }",
+          "  };",
+          "",
+          "  pm.sendRequest(authRequest, function(err, response) {",
+          "    if (err) {",
+          "      console.error('Token generation failed:', err);",
+          "      pm.collectionVariables.set('access_token', 'ERROR_TOKEN_FAILED');",
+          "    } else if (response.code === 200) {",
+          "      const jsonData = response.json();",
+          "      pm.collectionVariables.set('access_token', jsonData.access_token);",
+          "      pm.collectionVariables.set('token_expiry', now + jsonData.expires_in - 10);",
+          "      console.log('✓ New token generated, expires in', jsonData.expires_in, 'seconds');",
+          "    } else {",
+          "      console.error('Token error:', response.code, response.text());",
+          "      pm.collectionVariables.set('access_token', 'ERROR_' + response.code);",
+          "    }",
+          "  });",
+          "} else {",
+          "  console.log('✓ Using cached token (expires in', tokenExpiry - now, 'seconds)');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 Token Management",
+      "item": [
+        {
+          "name": "Generate Token (Customer - Password Grant) [DEFAULT]",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const jsonData = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "  const expiryTime = Math.floor(Date.now() / 1000) + jsonData.expires_in - 10;",
+                  "  pm.collectionVariables.set('token_expiry', expiryTime);",
+                  "  pm.test('✓ Token generated successfully', () => {",
+                  "    pm.expect(jsonData.access_token).to.be.a('string');",
+                  "    pm.expect(jsonData.token_type).to.equal('Bearer');",
+                  "  });",
+                  "  console.log('✓ customer1 token ready, expires in', jsonData.expires_in, 'sec');",
+                  "} else {",
+                  "  pm.test('✗ Token generation failed', () => {",
+                  "    pm.expect(pm.response.code).to.equal(200);",
+                  "  });",
+                  "  console.error('Token error:', pm.response.code, pm.response.text());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "client_id",     "value": "{{oauth_client_id}}" },
+                { "key": "client_secret", "value": "{{oauth_client_secret}}" },
+                { "key": "grant_type",    "value": "password" },
+                { "key": "username",      "value": "{{oauth_username}}" },
+                { "key": "password",      "value": "{{oauth_password}}" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_token_url}}",
+              "host": ["{{keycloak_token_url}}"]
+            },
+            "description": "Get access token as customer1 (CUSTOMER role). Run this first to populate {{access_token}} for all other requests."
+          }
+        },
+        {
+          "name": "Generate Token (Customer - Password Grant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const jsonData = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "  pm.test('✓ Customer token generated', () => {",
+                  "    pm.expect(jsonData.access_token).to.be.a('string');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{oauth_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{oauth_client_secret}}"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "username",
+                  "value": "customer1"
+                },
+                {
+                  "key": "password",
+                  "value": "password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_token_url}}",
+              "host": ["{{keycloak_token_url}}"]
+            },
+            "description": "Get token as customer1 (read-only access)"
+          }
+        },
+        {
+          "name": "Generate Token (Manager - Password Grant)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const jsonData = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', jsonData.access_token);",
+                  "  pm.test('✓ Manager token generated', () => {",
+                  "    pm.expect(jsonData.access_token).to.be.a('string');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "client_id",
+                  "value": "{{oauth_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{oauth_client_secret}}"
+                },
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "username",
+                  "value": "manager1"
+                },
+                {
+                  "key": "password",
+                  "value": "password"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_token_url}}",
+              "host": ["{{keycloak_token_url}}"]
+            },
+            "description": "Get token as manager1 (read-write access)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📖 Product API (api-read : 8081)",
+      "item": [
+        {
+          "name": "Get Product by ID (low range)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/products/42",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["api", "v1", "products", "42"]
+            },
+            "description": "Product ID 1-1000 (seeded by init.sql)"
+          }
+        },
+        {
+          "name": "Get Product by ID (high range)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/products/5000",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["api", "v1", "products", "5000"]
+            },
+            "description": "Product ID 1001-10000 (seeded by seed-bulk-data.sql)"
+          }
+        },
+        {
+          "name": "Get Product 404 (NoSuchElementException → 404)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["pm.test('Returns 404', () => pm.response.to.have.status(404));"] }
+          }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/products/999999",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["api", "v1", "products", "999999"]
+            },
+            "description": "Expect 404 NOT_FOUND for non-existent product (gap fix #5 validation)"
+          }
+        },
+        {
+          "name": "List Products page 0 (size 10)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/products?page=0&size=10",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["api", "v1", "products"],
+              "query": [{ "key": "page", "value": "0" }, { "key": "size", "value": "10" }]
+            },
+            "description": "Page 0 of 10 — from 10,000 products total"
+          }
+        },
+        {
+          "name": "List Products page 99 (last page of 10k)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": {
+              "raw": "http://localhost:8081/api/v1/products?page=99&size=100",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["api", "v1", "products"],
+              "query": [{ "key": "page", "value": "99" }, { "key": "size", "value": "100" }]
+            },
+            "description": "Last page (9901-10000) from the bulk-seeded dataset"
+          }
+        },
+        {
+          "name": "Health Check (api-read)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8081/actuator/health",
+              "protocol": "http", "host": ["localhost"], "port": "8081",
+              "path": ["actuator", "health"]
+            },
+            "description": "Liveness + readiness health check — no auth required"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏥 Health Checks",
+      "item": [
+        {
+          "name": "api-write health",
+          "request": {
+            "method": "GET", "header": [],
+            "url": { "raw": "http://localhost:8082/actuator/health", "protocol": "http", "host": ["localhost"], "port": "8082", "path": ["actuator", "health"] }
+          }
+        },
+        {
+          "name": "api-rw health",
+          "request": {
+            "method": "GET", "header": [],
+            "url": { "raw": "http://localhost:8083/actuator/health", "protocol": "http", "host": ["localhost"], "port": "8083", "path": ["actuator", "health"] }
+          }
+        },
+        {
+          "name": "Keycloak realm info",
+          "request": {
+            "method": "GET", "header": [],
+            "url": { "raw": "http://localhost:8180/realms/store-realm", "protocol": "http", "host": ["localhost"], "port": "8180", "path": ["realms", "store-realm"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📦 Inventory API (api-rw : 8083)",
+      "item": [
+        {
+          "name": "Reserve Stock (Hot Path - Redis)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 5\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/v1/inventory/42/reserve-hot",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "v1", "inventory", "42", "reserve-hot"]
+            },
+            "description": "Reserve stock using hot path (Redis DECR - 100k ops/sec)"
+          }
+        },
+        {
+          "name": "Reserve Stock (Standard - DB Lock)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quantity\": 3\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/v1/inventory/42/reserve",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "v1", "inventory", "42", "reserve"]
+            },
+            "description": "Reserve stock using standard path (DB lock - ~200 TPS)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "📝 Order API (api-write : 8082)",
+      "item": [
+        {
+          "name": "Place Order (Async)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 42,\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "v1", "orders"]
+            },
+            "description": "Place an order (async via Kafka)"
+          }
+        },
+        {
+          "name": "Update Order (Manager Only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productId\": 42,\n  \"quantity\": 1\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8082/api/v1/orders/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8082",
+              "path": ["api", "v1", "orders", "1"]
+            },
+            "description": "Update order status (MANAGER role required)"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "keycloak_token_url",
+      "value": "http://localhost:8180/realms/store-realm/protocol/openid-connect/token",
+      "type": "string"
+    },
+    {
+      "key": "oauth_client_id",
+      "value": "store-api",
+      "type": "string"
+    },
+    {
+      "key": "oauth_client_secret",
+      "value": "store-api-secret",
+      "type": "string"
+    },
+    {
+      "key": "oauth_username",
+      "value": "customer1",
+      "type": "string"
+    },
+    {
+      "key": "oauth_password",
+      "value": "password",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "token_expiry",
+      "value": "0",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+# docker-compose.override.yml — Local dev overrides (debug ports, hot reload)
+#
+# New Relic (optional): set these in your shell before running docker compose up
+#   $env:NEW_RELIC_API_KEY    = "NRAK-..."
+#   $env:NEW_RELIC_ACCOUNT_ID = "1234567"
+#   $env:NEW_RELIC_ENABLED    = "true"
+# Credentials are NOT committed — they are read from your host environment.
+
+services:
+  api-read:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+      # Spring-native env var names — bypass YAML placeholder resolution at autoconfiguration phase
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ENABLED: ${NEW_RELIC_ENABLED:-false}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_API_KEY: ${NEW_RELIC_API_KEY:-}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ACCOUNT_ID: ${NEW_RELIC_ACCOUNT_ID:-}
+    ports:
+      - "5005:5005"
+
+  api-write:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5006"
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ENABLED: ${NEW_RELIC_ENABLED:-false}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_API_KEY: ${NEW_RELIC_API_KEY:-}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ACCOUNT_ID: ${NEW_RELIC_ACCOUNT_ID:-}
+    ports:
+      - "5006:5006"
+
+  api-rw:
+    environment:
+      JAVA_TOOL_OPTIONS: "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5007"
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ENABLED: ${NEW_RELIC_ENABLED:-false}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_API_KEY: ${NEW_RELIC_API_KEY:-}
+      MANAGEMENT_NEWRELIC_METRICS_EXPORT_ACCOUNT_ID: ${NEW_RELIC_ACCOUNT_ID:-}
+    ports:
+      - "5007:5007"

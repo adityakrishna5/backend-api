@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-read
+  namespace: platform
+  labels:
+    app: api-read
+    version: "1.0"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-read
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0       # zero-downtime rolling deploy
+  template:
+    metadata:
+      labels:
+        app: api-read
+        version: "1.0"
+    spec:
+      serviceAccountName: store-api-read
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      terminationGracePeriodSeconds: 60   # must exceed timeout-per-shutdown-phase (30s)
+      containers:
+        # ── Spring Boot app ───────────────────────────────────────────────────
+        - name: api-read
+          image: REGION-docker.pkg.dev/PROJECT_ID/store/api-read:IMAGE_TAG
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: SPRING_PROFILES_ACTIVE
+            - name: REDIS_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: REDIS_HOST
+            - name: KEYCLOAK_ISSUER_URI
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: KEYCLOAK_ISSUER_URI
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: DB_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: DB_PASSWORD
+            - name: NEW_RELIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: NEW_RELIC_API_KEY
+            - name: NEW_RELIC_ACCOUNT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: store-secrets
+                  key: NEW_RELIC_ACCOUNT_ID
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 5"]   # allow LB to drain
+
+        # ── Cloud SQL Auth Proxy sidecar ──────────────────────────────────────
+        - name: cloud-sql-proxy
+          image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.0
+          args:
+            - "--port=5432"
+            - "$(CLOUD_SQL_INSTANCE)"
+          env:
+            - name: CLOUD_SQL_INSTANCE
+              valueFrom:
+                configMapKeyRef:
+                  name: store-config
+                  key: CLOUD_SQL_INSTANCE_CONNECTION_NAME
+          securityContext:
+            runAsNonRoot: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+
+      nodeSelector:
+        pool: app-pool
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [api-read]
+                topologyKey: kubernetes.io/hostname   # spread across nodes

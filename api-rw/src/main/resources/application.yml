@@ -1,0 +1,68 @@
+spring:
+  application:
+    name: api-rw
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads
+  cache:
+    type: redis
+    redis:
+      time-to-live: 60000   # 60s TTL for cached inventory
+  data:
+    redis:
+      timeout: 500ms
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+      connection-timeout: 3000
+      idle-timeout: 600000
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        linger.ms: 5
+        batch.size: 65536
+        compression.type: gzip
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+  newrelic:
+    metrics:
+      export:
+        api-key: ${NEW_RELIC_API_KEY:unset}
+        account-id: ${NEW_RELIC_ACCOUNT_ID:unset}
+        step: 30s
+
+server:
+  port: 8080
+  shutdown: graceful
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      inventoryService:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10s
+        permittedNumberOfCallsInHalfOpenState: 3
+        registerHealthIndicator: true

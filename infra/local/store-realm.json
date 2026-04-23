@@ -1,0 +1,125 @@
+{
+  "realm": "store-realm",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clientScopes": [
+    {
+      "attributes": {
+        "include.in.token.scope": "true"
+      },
+      "protocol": "openid-connect",
+      "name": "roles",
+      "protocolMappers": [
+        {
+          "config": {
+            "jsonType.label": "String",
+            "userinfo.token.claim": "false",
+            "claim.name": "realm_access.roles",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "multivalued": "true"
+          },
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "protocol": "openid-connect",
+          "name": "realm roles",
+          "consentRequired": false
+        }
+      ]
+    }
+  ],
+  "resetPasswordAllowed": true,
+  "loginWithEmailAllowed": true,
+  "editUsernameAllowed": false,
+  "users": [
+    {
+      "email": "customer1@store.local",
+      "credentials": [
+        {
+          "type": "password",
+          "temporary": false,
+          "value": "password"
+        }
+      ],
+      "username": "customer1",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Customer",
+      "realmRoles": [
+        "CUSTOMER"
+      ],
+      "enabled": true
+    },
+    {
+      "email": "manager1@store.local",
+      "credentials": [
+        {
+          "type": "password",
+          "temporary": false,
+          "value": "password"
+        }
+      ],
+      "username": "manager1",
+      "emailVerified": true,
+      "firstName": "Test",
+      "lastName": "Manager",
+      "realmRoles": [
+        "MANAGER",
+        "CUSTOMER"
+      ],
+      "enabled": true
+    }
+  ],
+  "roles": {
+    "realm": [
+      {
+        "description": "Standard store customer",
+        "name": "CUSTOMER"
+      },
+      {
+        "description": "Store manager with write access",
+        "name": "MANAGER"
+      }
+    ]
+  },
+  "duplicateEmailsAllowed": false,
+  "enabled": true,
+  "bruteForceProtected": true,
+  "clients": [
+    {
+      "redirectUris": [
+        "http://localhost/*",
+        "http://localhost:*/*",
+        "urn:ietf:wg:oauth:2.0:oob"
+      ],
+      "name": "Store API Client",
+      "bearerOnly": false,
+      "clientId": "store-api",
+      "directAccessGrantsEnabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ],
+      "serviceAccountsEnabled": true,
+      "secret": "store-api-secret",
+      "standardFlowEnabled": true,
+      "publicClient": false,
+      "enabled": true
+    },
+    {
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "clientId": "k6-load-test",
+      "standardFlowEnabled": false,
+      "publicClient": false,
+      "enabled": true,
+      "secret": "k6-secret-local-only",
+      "defaultClientScopes": [
+        "email",
+        "profile",
+        "roles"
+      ]
+    }
+  ]
+}

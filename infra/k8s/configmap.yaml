@@ -1,0 +1,29 @@
+# Non-sensitive configuration values.
+# Replace PLACEHOLDER values before applying:
+#   kubectl apply -f infra/k8s/configmap.yaml -n platform
+#
+# Sensitive values (DB_USER, DB_PASSWORD, NR keys) go in secret.template.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: store-config
+  namespace: platform
+data:
+  # GCP project + region — used in CLI commands and Cloud SQL instance name
+  GCP_PROJECT_ID: "your-project-id"
+  GCP_REGION: "asia-south1"
+
+  # Cloud SQL Auth Proxy — <project>:<region>:<instance-name>
+  CLOUD_SQL_INSTANCE_CONNECTION_NAME: "your-project-id:asia-south1:store-db"
+
+  # Memorystore Redis private IP (assigned at provisioning time)
+  REDIS_HOST: "10.0.0.100"
+
+  # Kafka bootstrap — Confluent Cloud or Bitnami Kafka headless service
+  KAFKA_BOOTSTRAP_SERVERS: "kafka-headless.infra.svc.cluster.local:9092"
+
+  # Keycloak JWT issuer — internal DNS if Keycloak runs in-cluster
+  KEYCLOAK_ISSUER_URI: "https://keycloak.ops.svc.cluster.local/realms/store-realm"
+
+  # Spring profile activated in all pods
+  SPRING_PROFILES_ACTIVE: "gcp"

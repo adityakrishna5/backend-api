@@ -1,0 +1,12 @@
+# Ensures at least 1 api-read pod is always available during node upgrades
+# and rolling deploys (kubectl drain, GKE auto-upgrade, etc.)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: api-read
+  namespace: platform
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: api-read
